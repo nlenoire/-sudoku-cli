@@ -1,0 +1,33 @@
+{
+  "name": "semarchy-sudoku-cli",
+  "version": "0.1.0",
+  "description": "Command-line toolkit for Sudoku validation, solving, and generation.",
+  "type": "module",
+  "bin": {
+    "sudoku": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node --esm src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "sudoku",
+    "cli",
+    "puzzle"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
