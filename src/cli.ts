@@ -20,7 +20,7 @@ program
 program
   .command('validate')
   .description('Validate a Sudoku puzzle input.')
-  .requiredOption('-i, --input <value>', '81-character puzzle string or file path placeholder.')
+  .requiredOption('-i, --input <value>', '81-character puzzle string or path to a text file.')
   .action(async (options: ValidateCommandOptions) => {
     await handleValidateCommand(options);
   });
@@ -28,7 +28,7 @@ program
 program
   .command('solve')
   .description('Solve a Sudoku puzzle input.')
-  .requiredOption('-i, --input <value>', '81-character puzzle string or file path placeholder.')
+  .requiredOption('-i, --input <value>', '81-character puzzle string or path to a text file.')
   .action(async (options: SolveCommandOptions) => {
     await handleSolveCommand(options);
   });
@@ -38,6 +38,7 @@ program
   .description('Generate a new Sudoku puzzle for a given difficulty and seed.')
   .requiredOption('-d, --difficulty <level>', 'Difficulty level to generate (e.g., easy, medium, hard).')
   .requiredOption('-s, --seed <number>', 'Seed used for deterministic generation.')
+  .option('-i, --input <value>', 'Optional puzzle template string or path to a text file.')
   .action(async (options: GenerateCommandOptions) => {
     await handleGenerateCommand(options);
   });
