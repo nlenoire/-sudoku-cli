@@ -11,7 +11,8 @@
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node --esm src/cli.ts",
     "start": "node dist/cli.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "sudoku",
