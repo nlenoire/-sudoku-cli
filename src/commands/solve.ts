@@ -15,7 +15,7 @@ export async function handleSolveCommand(options: SolveCommandOptions): Promise<
     return;
   }
 
-  // Optionally validate the grid before solving
+  // Validate the grid before solving
   const validation = validateGrid(parsedResult.grid);
   if (!validation.valid) {
     console.error('Input puzzle violates Sudoku rules and cannot be solved.');
