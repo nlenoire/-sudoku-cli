@@ -1,0 +1,140 @@
+name: Docs Refresh
+
+on:
+  workflow_run:
+    workflows:
+      - Sudoku CI
+    types:
+      - completed
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-docs-issue:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out triggering commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Collect change metadata
+        id: gather
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const headSha = context.payload.workflow_run.head_sha;
+            const owner = context.payload.workflow_run.head_repository.owner.login;
+            const repo = context.payload.workflow_run.head_repository.name;
+
+            const commit = await github.rest.repos.getCommit({
+              owner,
+              repo,
+              ref: headSha,
+            });
+
+            const commitUrl = commit.data.html_url;
+            const parents = commit.data.parents || [];
+            const baseSha = parents.length ? parents[0].sha : null;
+
+            let files = (commit.data.files || []).map((file) => file.filename);
+
+            if (baseSha) {
+              try {
+                const compare = await github.rest.repos.compareCommitsWithBasehead({
+                  owner,
+                  repo,
+                  basehead: `${baseSha}...${headSha}`,
+                });
+
+                if (compare.data.files?.length) {
+                  files = compare.data.files.map((file) => file.filename);
+                }
+              } catch (error) {
+                core.warning(`Unable to compare commits: ${error.message}`);
+              }
+            }
+
+            if (!files.length) {
+              core.warning('No changed files detected from API response.');
+            }
+
+            const docsOnly = files.length > 0 && files.every((file) => {
+              return file === 'README.md' || file.startsWith('docs/');
+            });
+
+            const filesMarkdown = files.length
+              ? files.map((file) => `- ${file}`).join('\n')
+              : '- _No file data available_';
+
+            core.setOutput('files_markdown', filesMarkdown);
+            core.setOutput('docs_only', docsOnly ? 'true' : 'false');
+            core.setOutput('commit_url', commitUrl);
+            core.setOutput('head_sha', headSha);
+            core.setOutput('short_sha', headSha.slice(0, 7));
+            if (baseSha) {
+              core.setOutput('base_sha', baseSha);
+            }
+
+      - name: Docs-only change detected
+        if: steps.gather.outputs.docs_only == 'true'
+        run: echo "No issue created because only docs files changed."
+
+      - name: Ensure docs-agent label exists
+        if: steps.gather.outputs.docs_only != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelName = 'docs-agent';
+            const color = '0a7ea4';
+            const description = 'Docs refresh automation label';
+
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelName,
+              });
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: labelName,
+                  color,
+                  description,
+                });
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Open docs refresh issue
+        if: steps.gather.outputs.docs_only != 'true'
+        uses: actions/github-script@v7
+        env:
+          ISSUE_TITLE: "Docs refresh: ${{ steps.gather.outputs.short_sha }}"
+          COMMIT_URL: ${{ steps.gather.outputs.commit_url }}
+          FILES_MD: ${{ steps.gather.outputs.files_markdown }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `## Commit\n- ${process.env.COMMIT_URL}\n\n## Changed files\n${process.env.FILES_MD}\n\n## Optional prompt for Copilot (Docs agent)\n- Use sudoku-doc-writer.agent.md behavior.\n- Follow .github/copilot-instructions.md.\n- Update README/docs to reflect actual CLI behavior and any changes introduced in that commit.\n- Keep code changes minimal; docs-only preferred.\n`;
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: process.env.ISSUE_TITLE,
+              body,
+              labels: ['docs-agent'],
+            });
+
+            core.info(`Created issue #${issue.data.number} for docs refresh.`);
