@@ -1,4 +1,4 @@
-import { readAndParseInput } from '../lib/parser.js';
+import { generatePuzzle, Difficulty } from '../lib/generator.js';
 
 export interface GenerateCommandOptions {
   difficulty: string;
@@ -6,9 +6,12 @@ export interface GenerateCommandOptions {
   input?: string;
 }
 
+const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+
 export async function handleGenerateCommand(
   options: GenerateCommandOptions,
 ): Promise<void> {
+  // Validate seed
   const numericSeed = Number(options.seed);
   if (!Number.isFinite(numericSeed)) {
     console.error('Seed must be a finite number.');
@@ -16,18 +19,20 @@ export async function handleGenerateCommand(
     return;
   }
 
-  if (options.input) {
-    const parsedResult = await readAndParseInput(options.input);
-    if (!parsedResult.ok) {
-      console.error(parsedResult.error.message);
-      process.exitCode = 1;
-      return;
-    }
-    console.log('Generate command not implemented yet. Parsed optional input successfully.');
-    console.log(`Canonical grid: ${parsedResult.canonical}`);
-  } else {
-    console.log('Generate command not implemented yet.');
+  // Validate difficulty
+  const difficulty = options.difficulty.toLowerCase();
+  if (!VALID_DIFFICULTIES.includes(difficulty as Difficulty)) {
+    console.error(
+      `Invalid difficulty: "${options.difficulty}". Must be one of: ${VALID_DIFFICULTIES.join(', ')}.`
+    );
+    process.exitCode = 1;
+    return;
   }
 
-  console.log(`Requested difficulty: ${options.difficulty} with deterministic seed ${numericSeed}.`);
+  // Generate the puzzle
+  const puzzle = generatePuzzle(difficulty as Difficulty, numericSeed);
+
+  // Output as a single 81-character line
+  const puzzleString = puzzle.flat().join('');
+  console.log(puzzleString);
 }
